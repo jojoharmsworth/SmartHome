@@ -1,0 +1,24 @@
+{
+    "files.associations": {
+        "mqttkit.h": "c",
+        "string.h": "c",
+        "usart.h": "c",
+        "esp8266.h": "c",
+        "main.h": "c",
+        "dht11.h": "c",
+        "stm32f1xx.h": "c",
+        "tim.h": "c",
+        "gpio.h": "c",
+        "dht11_yuanzi.h": "c",
+        "stdio.h": "c",
+        "cstdio": "c",
+        "bh1750.h": "c",
+        "stm32f1xx_hal.h": "c",
+        "i2c.h": "c",
+        "stm32f1xx_it.h": "c",
+        "ui.h": "c",
+        "common.h": "c",
+        "led.h": "c"
+    },
+    "C_Cpp.errorSquiggles": "disabled"
+}
