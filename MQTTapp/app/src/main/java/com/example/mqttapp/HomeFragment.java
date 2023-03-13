@@ -1,6 +1,7 @@
 package com.example.mqttapp;
 
 import android.annotation.SuppressLint;
+import android.bluetooth.le.AdvertisingSetParameters;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -24,6 +25,10 @@ import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.amap.api.location.AMapLocation;
+import com.amap.api.location.AMapLocationClient;
+import com.amap.api.location.AMapLocationClientOption;
+import com.amap.api.location.AMapLocationListener;
 import com.google.gson.Gson;
 import com.qweather.sdk.bean.base.Code;
 import com.qweather.sdk.bean.base.Lang;
@@ -43,7 +48,7 @@ import java.util.concurrent.ScheduledExecutorService;
  * Use the {@link HomeFragment#newInstance} factory method to
  * create an instance of this fragment.
  */
-public class HomeFragment extends Fragment {
+public class HomeFragment extends Fragment implements AMapLocationListener {
 
     // TODO: Rename parameter arguments, choose names that match
     // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
@@ -57,6 +62,7 @@ public class HomeFragment extends Fragment {
     private static final String KEY_RED_LED = "led_status";
     private static final String KEY_PUBLIC_ID = "HE2303131124251833";
     private static final String KEY_KEY = "0ec22918191840caafd73c7c53bca2f3";
+    private static final String TAG = "amap";
 
     private final String FILE_NAME = "App_data";             //数据文件名
 
@@ -82,6 +88,10 @@ public class HomeFragment extends Fragment {
     private JSONObject jsonObject;
     private boolean fragmentViewDestroyFlag = false;
     private int ledR;
+
+    public AMapLocationClient aMapLocationClient = null;
+    private AMapLocationClient locationClientContinue;
+    private AMapLocationClientOption locationClientContinueOption;
 
     public HomeFragment() {
         // Required empty public constructor
@@ -114,6 +124,9 @@ public class HomeFragment extends Fragment {
         }
         //注册广播
         mRegisterBroadCast();
+
+//        initAMapLocation();
+
     }
 
     @Nullable
@@ -130,6 +143,7 @@ public class HomeFragment extends Fragment {
 
         load();                 //加载数据
         initView(view);
+
 
         //getPosition
         HeConfig.init(KEY_PUBLIC_ID, KEY_KEY);
@@ -261,26 +275,28 @@ public class HomeFragment extends Fragment {
     }
 
     /**
-     *
      * <p/> 从API获取天气数据
+     *
      * @param view view
      * @return void
      * @author jojo
      * @date 2023-3-13
      */
-    public void setTempAndHumidity(View view){
+    public void setTempAndHumidity(View view) {
         //location:查询的地区，可通过该地区ID、经纬度进行查询经纬度格式，这里以郑州为例，郑州的城市编号为"CN101180101"
         //location可以填城市编号，也可以填经纬度
-        QWeather.getWeatherNow(getActivity(), "CN101020100", Lang.ZH_HANS, Unit.METRIC, new QWeather.OnResultWeatherNowListener(){
-            public static final String TAG="he_feng_now";
+        QWeather.getWeatherNow(getActivity(), "CN101020100", Lang.ZH_HANS, Unit.METRIC, new QWeather.OnResultWeatherNowListener() {
+            public static final String TAG = "he_feng_now";
+
             @Override
             public void onError(Throwable e) {
                 Log.i(TAG, "onError: ", e);
                 System.out.println("获取天气失败");
-                System.out.println("Weather Now Error:"+new Gson());
+                System.out.println("Weather Now Error:" + new Gson());
             }
+
             @Override
-            public void onSuccess(WeatherNowBean weatherBean){
+            public void onSuccess(WeatherNowBean weatherBean) {
                 //Log.i(TAG, "getWeather onSuccess: " + new Gson().toJson(weatherBean));
                 System.out.println("获取天气成功： " + new Gson().toJson(weatherBean));
                 //先判断返回的status是否正确，当status正确时获取数据，若status不正确，可查看status对应的Code值找到原因
@@ -288,11 +304,11 @@ public class HomeFragment extends Fragment {
                 if (Code.OK == weatherBean.getCode()) {
                     WeatherNowBean.NowBaseBean now = weatherBean.getNow();
                     System.out.println(now);
-                    String tianqi=now.getText();//天气
-                    String wendu=now.getTemp()+"℃";//温度
-                    String fengli=now.getWindScale();//风力
-                    String fengxiang=now.getWindDir();//风向
-                    String shidu=now.getHumidity()+"%";//湿度
+                    String tianqi = now.getText();//天气
+                    String wendu = now.getTemp() + "℃";//温度
+                    String fengli = now.getWindScale();//风力
+                    String fengxiang = now.getWindDir();//风向
+                    String shidu = now.getHumidity() + "%";//湿度
 
 
                     getActivity().runOnUiThread(new Runnable() {
@@ -306,8 +322,7 @@ public class HomeFragment extends Fragment {
                     在Activity中时可以把这些放在外边，不用带什么runOnUi...
                     参考了https://blog.csdn.net/i_nclude/article/details/105563688*/
 
-                }
-                else {
+                } else {
                     //在此查看返回数据失败的原因
                     Code code = weatherBean.getCode();
                     System.out.println("失败代码: " + code);
@@ -315,5 +330,34 @@ public class HomeFragment extends Fragment {
                 }
             }
         });
+    }
+
+    /**
+     * 初始化高德定位
+     */
+    private void initAMapLocation() {
+
+        AMapLocationClient.updatePrivacyAgree(getContext(), true);
+        AMapLocationClient.updatePrivacyShow(getContext(), true, true);
+        try {
+            locationClientContinue = new AMapLocationClient(getActivity());
+
+            locationClientContinue.setLocationListener(this);
+            //设置定位间隔,单位毫秒,默认为2000ms，最低1000ms。
+            locationClientContinueOption.setInterval(1000);
+            //给定位客户端对象设置定位参数
+            locationClientContinue.setLocationOption(locationClientContinueOption);
+            //启动定位
+            locationClientContinue.startLocation();
+
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public void onLocationChanged(AMapLocation aMapLocation) {
+        Log.d(TAG, "onLocationChanged: latitude" + String.valueOf(aMapLocation.getLatitude()));
+        Log.d(TAG, "onLocationChanged: Longitude" + String.valueOf(aMapLocation.getLongitude()));
     }
 }
