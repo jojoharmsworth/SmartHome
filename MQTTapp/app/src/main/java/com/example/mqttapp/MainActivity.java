@@ -7,6 +7,8 @@ import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
 
 import android.annotation.SuppressLint;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
@@ -31,6 +33,7 @@ import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends AppCompatActivity {
 
+    private static final String KEY_PUBLISH_TOPIC = "kylinBoard";
     private NavController navController;
     private ScheduledExecutorService scheduler;
     private MqttClient client;
@@ -40,8 +43,11 @@ public class MainActivity extends AppCompatActivity {
     private String userName = "jojo";
     private String passWord = "harmsworth";
     private String mqtt_sub_topic = "pcTopic";
-    private static final String ACTION_UPLOAD_RESULT = "STM32_to_APP";
-    private static final String KEY_RESULT = "data_mqtt";
+    private static final String ACTION_MAINACTIVITY_TO_HOMEFRAGMENT = "STM32_to_APP";
+    private static final String ACTION_HOMEFRAGMENT_TO_MAINACTIVITY = "APP_to_STM32";
+    private static final String KEY_SUBSCRIBE = "data_mqtt";
+    private static final String KEY_PUBLISH = "data_app";
+    private int ledStatus = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,6 +58,7 @@ public class MainActivity extends AppCompatActivity {
 
         Mqtt_init();
         startReconnect();
+        registerBoardCast();
 
         handler = new Handler(Looper.myLooper()) {
             @SuppressLint("SetTextI18n")
@@ -66,11 +73,15 @@ public class MainActivity extends AppCompatActivity {
                     case 3:  //MQTT 收到消息回传   UTF8Buffer msg=new UTF8Buffer(object.toString());
 
                         System.out.println(msg.obj.toString());   // 显示MQTT数据
-
                         Intent intent = new Intent();
-                        intent.setAction(ACTION_UPLOAD_RESULT);
-                        intent.putExtra(KEY_RESULT, msg.obj.toString());
+                        intent.setAction(ACTION_MAINACTIVITY_TO_HOMEFRAGMENT);
+                        intent.putExtra(KEY_SUBSCRIBE, msg.obj.toString());
                         sendBroadcast(intent);
+                        break;
+                    case 4:     //MQTT 消息发布
+                        String str = String.format("{\r\n\"LED\": %d\r\n}", ledStatus);
+                        PublishMessagePlus(KEY_PUBLISH_TOPIC, str);
+                        System.out.println("led changed..." + str);
                         break;
                     case 30:  //连接失败
                         Toast.makeText(MainActivity.this, "连接失败", Toast.LENGTH_SHORT).show();
@@ -89,6 +100,24 @@ public class MainActivity extends AppCompatActivity {
             }
         };
     }
+
+    private void registerBoardCast() {
+        IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(ACTION_HOMEFRAGMENT_TO_MAINACTIVITY);
+        registerReceiver(broadcastReceiver, intentFilter);
+    }
+
+    private BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent != null) {
+                Message message = new Message();
+                message.what = 4;
+                ledStatus = intent.getBooleanExtra(KEY_PUBLISH, false) ? 1 : 0;
+                handler.sendMessage(message);
+            }
+        }
+    };
 
     private void BottomNavigationInit() {
         BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_navigation_view);
@@ -175,6 +204,12 @@ public class MainActivity extends AppCompatActivity {
         }).start();
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        unregisterReceiver(broadcastReceiver);
+    }
+
     // MQTT重新连接函数
     private void startReconnect() {
         scheduler = Executors.newSingleThreadScheduledExecutor();
@@ -202,5 +237,6 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
         }
     }
+
 
 }
