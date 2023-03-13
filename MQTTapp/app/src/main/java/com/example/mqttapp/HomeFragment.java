@@ -15,6 +15,7 @@ import androidx.fragment.app.Fragment;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -22,6 +23,14 @@ import android.widget.CompoundButton;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.google.gson.Gson;
+import com.qweather.sdk.bean.base.Code;
+import com.qweather.sdk.bean.base.Lang;
+import com.qweather.sdk.bean.base.Unit;
+import com.qweather.sdk.bean.weather.WeatherNowBean;
+import com.qweather.sdk.view.HeConfig;
+import com.qweather.sdk.view.QWeather;
 
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.json.JSONException;
@@ -46,6 +55,8 @@ public class HomeFragment extends Fragment {
     private static final String KEY_SUBSCRIBE = "data_mqtt";
     private static final String KEY_PUBLISH = "data_app";
     private static final String KEY_RED_LED = "led_status";
+    private static final String KEY_PUBLIC_ID = "HE2303131124251833";
+    private static final String KEY_KEY = "0ec22918191840caafd73c7c53bca2f3";
 
     private final String FILE_NAME = "App_data";             //数据文件名
 
@@ -63,6 +74,8 @@ public class HomeFragment extends Fragment {
     private TextView txvTemperature;
     private TextView txvIllumination;
     private TextView txvHumidity;
+    private TextView txvWeatherTemperature;
+    private TextView txvWeatherStatus;
     private Switch swLed;
 
     public Handler handler;
@@ -117,6 +130,12 @@ public class HomeFragment extends Fragment {
 
         load();                 //加载数据
         initView(view);
+
+        //getPosition
+        HeConfig.init(KEY_PUBLIC_ID, KEY_KEY);
+        HeConfig.switchToDevService();
+        setTempAndHumidity(view);
+
         handler = new Handler(Looper.myLooper()) {
             @SuppressLint("SetTextI18n")
             public void handleMessage(Message msg) {
@@ -166,7 +185,10 @@ public class HomeFragment extends Fragment {
         txvTemperature = view.findViewById(R.id.data_temperature);
         txvHumidity = view.findViewById(R.id.data_humidity);
         txvIllumination = view.findViewById(R.id.data_illumination);
+        txvWeatherTemperature = view.findViewById(R.id.weather_temperature);
+        txvWeatherStatus = view.findViewById(R.id.weather_status);
         swLed = view.findViewById(R.id.sw_led);
+
 
         swLed.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
@@ -236,5 +258,62 @@ public class HomeFragment extends Fragment {
         humi = shp.getInt(KEY_HUMIDITY, 99);
         illum = shp.getInt(KEY_ILLUMINATION, 99);
 //        ledR = shp.getInt(KEY_RED_LED, 0);
+    }
+
+    /**
+     *
+     * <p/> 从API获取天气数据
+     * @param view view
+     * @return void
+     * @author jojo
+     * @date 2023-3-13
+     */
+    public void setTempAndHumidity(View view){
+        //location:查询的地区，可通过该地区ID、经纬度进行查询经纬度格式，这里以郑州为例，郑州的城市编号为"CN101180101"
+        //location可以填城市编号，也可以填经纬度
+        QWeather.getWeatherNow(getActivity(), "CN101020100", Lang.ZH_HANS, Unit.METRIC, new QWeather.OnResultWeatherNowListener(){
+            public static final String TAG="he_feng_now";
+            @Override
+            public void onError(Throwable e) {
+                Log.i(TAG, "onError: ", e);
+                System.out.println("获取天气失败");
+                System.out.println("Weather Now Error:"+new Gson());
+            }
+            @Override
+            public void onSuccess(WeatherNowBean weatherBean){
+                //Log.i(TAG, "getWeather onSuccess: " + new Gson().toJson(weatherBean));
+                System.out.println("获取天气成功： " + new Gson().toJson(weatherBean));
+                //先判断返回的status是否正确，当status正确时获取数据，若status不正确，可查看status对应的Code值找到原因
+
+                if (Code.OK == weatherBean.getCode()) {
+                    WeatherNowBean.NowBaseBean now = weatherBean.getNow();
+                    System.out.println(now);
+                    String tianqi=now.getText();//天气
+                    String wendu=now.getTemp()+"℃";//温度
+                    String fengli=now.getWindScale();//风力
+                    String fengxiang=now.getWindDir();//风向
+                    String shidu=now.getHumidity()+"%";//湿度
+
+
+                    getActivity().runOnUiThread(new Runnable() {
+                        public void run() {
+                            txvWeatherStatus.setText(tianqi);//显示当前天气
+                            txvWeatherTemperature.setText(wendu);//显示当前温度
+                        }
+                    });
+                    /*注意这里对控件显示的操作被放在getActivity()...void run(){}里了
+                    这是因为我是在Fragment里操作的，如果把这些放在外边会抛出错误
+                    在Activity中时可以把这些放在外边，不用带什么runOnUi...
+                    参考了https://blog.csdn.net/i_nclude/article/details/105563688*/
+
+                }
+                else {
+                    //在此查看返回数据失败的原因
+                    Code code = weatherBean.getCode();
+                    System.out.println("失败代码: " + code);
+                    //Log.i(TAG, "failed code: " + code);
+                }
+            }
+        });
     }
 }

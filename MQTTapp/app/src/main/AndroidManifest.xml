@@ -6,6 +6,13 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!--    允许程序获取网络状态-->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!--    允许访问设备状态-->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!--    允许访问设备状态-->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <!--    允许访问WIFI状态-->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
     <application
         android:allowBackup="true"
