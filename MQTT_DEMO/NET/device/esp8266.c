@@ -31,6 +31,8 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "MqttKit.h"
+
 #if HOME
 #define ESP8266_WIFI_INFO "AT+CWJAP=\"ChinaNet-8952\",\"fd4v3rd6\"\r\n"
 #else
@@ -42,6 +44,7 @@
 uint8_t esp01_rx_buf[1];
 unsigned char esp8266_buf[128];
 unsigned short esp8266_cnt = 0, esp8266_cntPre = 0;
+extern char *devSubTopic[];
 
 //==========================================================
 //	函数名称：	ESP8266_Clear
@@ -269,4 +272,40 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		esp8266_buf[esp8266_cnt++] = esp01_rx_buf[0];
 	}
 	HAL_UART_Receive_IT(&huart2, esp01_rx_buf, 1);
+}
+
+void MQTT_Ping(void)
+{
+	unsigned char *dataPtr;
+	MQTT_PACKET_STRUCTURE mqttPacket = {NULL, 0, 0, 0};
+	if (MQTT_PacketPing(&mqttPacket) == 0) // 心跳包组包
+	{
+		ESP8266_SendData(mqttPacket._data, mqttPacket._len);
+		printf("发送的心跳数据:%#X", mqttPacket._data);
+		printf("Ping data:%x\r\n", mqttPacket._data);
+		MQTT_DeleteBuffer(&mqttPacket); // 删除包释放内存
+		dataPtr = ESP8266_GetIPD(100);	// 等待响应
+		if (dataPtr != NULL)
+		{
+			if (MQTT_UnPacketRecv(dataPtr) == MQTT_PKT_PINGRESP)
+			{
+				// 确定是心跳响应
+				printf("接收的心跳数据:%#X", MQTT_PKT_PINGRESP);
+				printf("Ping succeed\r\n");
+			}
+		}
+		else
+		{
+			printf("Ping fail\r\n"); // 响应失败/重新连接平台
+			while (OneNet_DevLink())
+			{
+				HAL_Delay(500);
+				printf("加载ESP8266\r\n");
+				ESP8266_Init();
+			}
+
+			printf("重连成功!\r\n");
+			OneNet_Subscribe(devSubTopic, 1);
+		}
+	}
 }

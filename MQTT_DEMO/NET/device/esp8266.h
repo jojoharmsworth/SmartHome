@@ -15,5 +15,7 @@ void ESP8266_SendData(uint8_t *data, unsigned short len);
 
 unsigned char *ESP8266_GetIPD(unsigned short timeOut);
 
+void MQTT_Ping(void);
+
 
 #endif

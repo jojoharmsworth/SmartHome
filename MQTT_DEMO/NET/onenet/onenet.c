@@ -42,11 +42,11 @@
 // LED
 #include "led.h"
 
-#define PROID "77247"
+#define PROID "esp8266test"
 
 #define AUTH_INFO "test"
 
-#define DEVID "5616839"
+#define DEVID "stm32f103zet6"
 
 extern unsigned char esp8266_buf[128];
 
@@ -76,7 +76,7 @@ _Bool OneNet_DevLink(void)
 		   "PROID: %s,	AUIF: %s,	DEVID:%s\r\n",
 		   PROID, AUTH_INFO, DEVID);
 
-	if (MQTT_PacketConnect(PROID, AUTH_INFO, DEVID, 256, 0, MQTT_QOS_LEVEL0, NULL, NULL, 0, &mqttPacket) == 0)
+	if (MQTT_PacketConnect(PROID, AUTH_INFO, DEVID, 60, 1, MQTT_QOS_LEVEL0, NULL, NULL, 0, &mqttPacket) == 0)
 	{
 		ESP8266_SendData(mqttPacket._data, mqttPacket._len); // 上传平台
 
@@ -145,7 +145,7 @@ void OneNet_Subscribe(const char *topics[], unsigned char topic_cnt)
 	for (; i < topic_cnt; i++)
 		printf("Subscribe Topic: %s\r\n", topics[i]);
 
-	if (MQTT_PacketSubscribe(MQTT_SUBSCRIBE_ID, MQTT_QOS_LEVEL2, topics, topic_cnt, &mqttPacket) == 0)
+	if (MQTT_PacketSubscribe(MQTT_SUBSCRIBE_ID, MQTT_QOS_LEVEL0, topics, topic_cnt, &mqttPacket) == 0)
 	{
 		ESP8266_SendData(mqttPacket._data, mqttPacket._len); // 向平台发送订阅请求
 
@@ -175,7 +175,7 @@ void OneNet_Publish(const char *topic, const char *msg)
 	printf("||\t\t\t\t\t\t\t||\r\n");
 	printf("====================================================\r\n");
 
-	if (MQTT_PacketPublish(MQTT_PUBLISH_ID, topic, msg, strlen(msg), MQTT_QOS_LEVEL2, 0, 1, &mqttPacket) == 0)
+	if (MQTT_PacketPublish(MQTT_PUBLISH_ID, topic, msg, strlen(msg), MQTT_QOS_LEVEL0, 0, 1, &mqttPacket) == 0)
 	{
 		ESP8266_SendData(mqttPacket._data, mqttPacket._len); // 向平台发送订阅请求
 

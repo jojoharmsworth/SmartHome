@@ -33,3 +33,6 @@ mqtt_demo\esp8266.o: ../Core/Inc/usart.h
 mqtt_demo\esp8266.o: ../Core/Inc/main.h
 mqtt_demo\esp8266.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
 mqtt_demo\esp8266.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
+mqtt_demo\esp8266.o: ../NET/MQTT/MqttKit.h
+mqtt_demo\esp8266.o: ../NET/MQTT/Common.h
+mqtt_demo\esp8266.o: E:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
