@@ -14,9 +14,9 @@
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_margin="10dp"
-            android:layout_weight="1"
+            android:layout_weight="1.2"
             android:background="@drawable/header_background_shape"
             android:elevation="10dp"
             android:orientation="vertical">
@@ -28,24 +28,26 @@
                 android:orientation="horizontal">
 
                 <TextView
+                    android:id="@+id/wind_speed"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:layout_marginStart="15dp"
                     android:layout_marginTop="20dp"
                     android:layout_weight="1"
                     android:gravity="bottom|left"
-                    android:text="空气质量-良好"
+                    android:text="风向XX"
                     android:textColor="@color/white"
                     android:textSize="25dp" />
 
                 <TextView
+                    android:id="@+id/location_city"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:layout_marginTop="20dp"
                     android:layout_marginEnd="15dp"
-                    android:layout_weight="1"
+                    android:layout_weight="2"
                     android:gravity="bottom|right"
-                    android:text="上海市"
+                    android:text="XXX"
                     android:textColor="@color/white"
                     android:textSize="25dp" />
             </LinearLayout>
@@ -83,14 +85,16 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="5dp"
                 android:layout_weight="1"
                 android:orientation="horizontal">
 
                 <TextView
+                    android:id="@+id/obs_time"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:layout_marginLeft="15dp"
-                    android:text="空气质量良好,健康人群外出活动无需刻意防护"
+                    android:text="实况观测时间"
                     android:textColor="@color/white"
                     android:textSize="15dp" />
 
@@ -100,7 +104,7 @@
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
             android:orientation="vertical">
 
@@ -367,13 +371,12 @@
 
             </LinearLayout>
 
-
         </LinearLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="189dp"
-            android:layout_weight="3"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
             android:orientation="horizontal">
 
         </LinearLayout>

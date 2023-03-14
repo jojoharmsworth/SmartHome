@@ -18,6 +18,10 @@ import android.os.Message;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.amap.api.location.AMapLocation;
+import com.amap.api.location.AMapLocationClient;
+import com.amap.api.location.AMapLocationClientOption;
+import com.amap.api.location.AMapLocationListener;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
@@ -39,9 +43,16 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements AMapLocationListener {
 
     private static final String KEY_PUBLISH_TOPIC = "kylinBoard";
+    private static final String TAG = "amap";
+    private static final String KEY_AMAP_LOCATION = "aMapLocation";
+    private static final String KEY_NAME_LOCATION_CITY = "nameLocationCity";
+    private static final String ACTION_MAINACTIVITY_TO_HOMEFRAGMENT = "STM32_to_APP";
+    private static final String ACTION_HOMEFRAGMENT_TO_MAINACTIVITY = "APP_to_STM32";
+    private static final String KEY_SUBSCRIBE = "data_mqtt";
+    private static final String KEY_PUBLISH = "data_app";
     private NavController navController;
     private ScheduledExecutorService scheduler;
     private MqttClient client;
@@ -51,11 +62,11 @@ public class MainActivity extends AppCompatActivity {
     private String userName = "jojo";
     private String passWord = "harmsworth";
     private String mqtt_sub_topic = "pcTopic";
-    private static final String ACTION_MAINACTIVITY_TO_HOMEFRAGMENT = "STM32_to_APP";
-    private static final String ACTION_HOMEFRAGMENT_TO_MAINACTIVITY = "APP_to_STM32";
-    private static final String KEY_SUBSCRIBE = "data_mqtt";
-    private static final String KEY_PUBLISH = "data_app";
     private int ledStatus = 0;
+    private String dataLatitudeLongitude;
+    private String nameLocationCity;
+    private AMapLocationClient locationClientContinue;
+    private AMapLocationClientOption locationClientContinueOption;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -67,6 +78,8 @@ public class MainActivity extends AppCompatActivity {
         Mqtt_init();
         startReconnect();
         registerBoardCast();
+        //初始化高德定位
+        initAMapLocation();
 
         handler = new Handler(Looper.myLooper()) {
             @SuppressLint("SetTextI18n")
@@ -107,6 +120,13 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         };
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        //停止定位
+        locationClientContinue.stopLocation();//停止定位后，本地定位服务并不会被销毁
     }
 
     private void registerBoardCast() {
@@ -215,7 +235,10 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        //注销广播接收
         unregisterReceiver(broadcastReceiver);
+        //销毁定位客户端
+        locationClientContinue.onDestroy();//销毁定位客户端，同时销毁本地定位服务。
     }
 
     // MQTT重新连接函数
@@ -246,4 +269,78 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * 初始化高德定位
+     * <p/>
+     *
+     * @param
+     * @return void
+     * @author jojo
+     * @date 2023/3/14
+     */
+    private void initAMapLocation() {
+
+        AMapLocationClient.updatePrivacyAgree(this, true);
+        AMapLocationClient.updatePrivacyShow(this, true, true);
+        try {
+            locationClientContinue = new AMapLocationClient(this);
+            locationClientContinueOption = new AMapLocationClientOption();
+
+            //设置定位模式为AMapLocationMode.Battery_Saving，低功耗模式。
+            locationClientContinueOption.setLocationMode(AMapLocationClientOption.AMapLocationMode.Battery_Saving);
+            //设置定位间隔,单位毫秒,默认为2000ms，最低1000ms。
+            locationClientContinueOption.setInterval(5000);
+            //设置是否返回地址信息（默认返回地址信息）
+            locationClientContinueOption.setNeedAddress(true);
+            //单位是毫秒，默认30000毫秒，建议超时时间不要低于8000毫秒。
+            locationClientContinueOption.setHttpTimeOut(20000);
+            //关闭缓存机制
+            locationClientContinueOption.setLocationCacheEnable(false);
+            //给定位客户端对象设置定位参数
+            locationClientContinue.setLocationOption(locationClientContinueOption);
+            //启动定位
+            locationClientContinue.startLocation();
+
+            locationClientContinue.setLocationListener(this);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * 高德定位回调
+     * <p/>
+     *
+     * @param aMapLocation
+     * @return void
+     * @author jojo
+     * @date 2023/3/14
+     */
+    @SuppressLint("DefaultLocale")
+    @Override
+    public void onLocationChanged(AMapLocation aMapLocation) {
+        if (aMapLocation != null) {
+            if (aMapLocation.getErrorCode() == 0) {
+                //可在其中解析aMapLocation获取相应内容。
+                dataLatitudeLongitude = String.format("%.2f,%.2f", aMapLocation.getLongitude(), aMapLocation.getLatitude());
+                nameLocationCity = aMapLocation.getCity();
+                Log.d(TAG, "onLocationChanged: city: " + nameLocationCity);
+                System.out.println(nameLocationCity);
+                Log.d(TAG, "onLocationChanged: latitude" + String.valueOf(aMapLocation.getLatitude()));
+                Log.d(TAG, "onLocationChanged: Longitude" + String.valueOf(aMapLocation.getLongitude()));
+                //todo: 得到定位后，刷新天气
+                Intent intent = new Intent();
+                intent.setAction(ACTION_MAINACTIVITY_TO_HOMEFRAGMENT);
+                intent.putExtra(KEY_AMAP_LOCATION, dataLatitudeLongitude);
+                intent.putExtra(KEY_NAME_LOCATION_CITY, nameLocationCity);
+                sendBroadcast(intent);
+
+            } else {
+                //定位失败时，可通过ErrCode（错误码）信息来确定失败的原因，errInfo是错误信息，详见错误码表。
+                Log.e("AmapError", "location Error, ErrCode:"
+                        + aMapLocation.getErrorCode() + ", errInfo:"
+                        + aMapLocation.getErrorInfo());
+            }
+        }
+    }
 }

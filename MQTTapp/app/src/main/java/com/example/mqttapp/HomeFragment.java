@@ -1,7 +1,6 @@
 package com.example.mqttapp;
 
 import android.annotation.SuppressLint;
-import android.bluetooth.le.AdvertisingSetParameters;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -37,18 +36,17 @@ import com.qweather.sdk.bean.weather.WeatherNowBean;
 import com.qweather.sdk.view.HeConfig;
 import com.qweather.sdk.view.QWeather;
 
-import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.util.concurrent.ScheduledExecutorService;
+import java.text.Format;
 
 /**
  * A simple {@link Fragment} subclass.
  * Use the {@link HomeFragment#newInstance} factory method to
  * create an instance of this fragment.
  */
-public class HomeFragment extends Fragment implements AMapLocationListener {
+public class HomeFragment extends Fragment {
 
     // TODO: Rename parameter arguments, choose names that match
     // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
@@ -57,6 +55,8 @@ public class HomeFragment extends Fragment implements AMapLocationListener {
 
     private static final String ACTION_MAINACTIVITY_TO_HOMEFRAGMENT = "STM32_to_APP";
     private static final String ACTION_HOMEFRAGMENT_TO_MAINACTIVITY = "APP_to_STM32";
+    private static final String KEY_AMAP_LOCATION = "aMapLocation";
+    private static final String KEY_NAME_LOCATION_CITY = "nameLocationCity";
     private static final String KEY_SUBSCRIBE = "data_mqtt";
     private static final String KEY_PUBLISH = "data_app";
     private static final String KEY_RED_LED = "led_status";
@@ -77,11 +77,14 @@ public class HomeFragment extends Fragment implements AMapLocationListener {
     private static int temper;
     private static int humi;
     private static int illum;
+    private TextView txvLocationCity;
     private TextView txvTemperature;
     private TextView txvIllumination;
     private TextView txvHumidity;
     private TextView txvWeatherTemperature;
     private TextView txvWeatherStatus;
+    private TextView txvWindSpeed;
+    private TextView txvObsTime;
     private Switch swLed;
 
     public Handler handler;
@@ -92,6 +95,10 @@ public class HomeFragment extends Fragment implements AMapLocationListener {
     public AMapLocationClient aMapLocationClient = null;
     private AMapLocationClient locationClientContinue;
     private AMapLocationClientOption locationClientContinueOption;
+    private String nameLocationCity;
+    private String dataLatitudeLongitude;
+
+    //TODO: 将界面卡片对象化
 
     public HomeFragment() {
         // Required empty public constructor
@@ -124,9 +131,6 @@ public class HomeFragment extends Fragment implements AMapLocationListener {
         }
         //注册广播
         mRegisterBroadCast();
-
-//        initAMapLocation();
-
     }
 
     @Nullable
@@ -141,20 +145,14 @@ public class HomeFragment extends Fragment implements AMapLocationListener {
         super.onViewCreated(view, savedInstanceState);
         fragmentViewDestroyFlag = false;
 
-        load();                 //加载数据
-        initView(view);
-
-
-        //getPosition
-        HeConfig.init(KEY_PUBLIC_ID, KEY_KEY);
-        HeConfig.switchToDevService();
-        setTempAndHumidity(view);
-
         handler = new Handler(Looper.myLooper()) {
             @SuppressLint("SetTextI18n")
             public void handleMessage(Message msg) {
                 super.handleMessage(msg);
                 switch (msg.what) {
+                    case 1:  //刷新UI
+                        refreshUi();
+                        break;
                     case 3:  //MQTT 收到消息回传   UTF8Buffer msg=new UTF8Buffer(object.toString());
                         try {
                             jsonObject = new JSONObject(msg.obj.toString());
@@ -180,42 +178,35 @@ public class HomeFragment extends Fragment implements AMapLocationListener {
                 }
             }
         };
+
+        load();                 //加载数据
+        initView(view);
+        //初始化和风天气
+        HeConfig.init(KEY_PUBLIC_ID, KEY_KEY);
+        HeConfig.switchToDevService();
+
     }
 
     private final BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (intent != null && !fragmentViewDestroyFlag) {
-                Message message = new Message();
-                message.what = 3;
-                message.obj = intent.getStringExtra(KEY_SUBSCRIBE);
-                handler.sendMessage(message);
+                //从 MainActivity 获取高德定位信息
+                if (intent.getStringExtra(KEY_NAME_LOCATION_CITY) != null && intent.getStringExtra(KEY_AMAP_LOCATION) != null) {
+                    dataLatitudeLongitude = intent.getStringExtra(KEY_AMAP_LOCATION);
+                    nameLocationCity = intent.getStringExtra(KEY_NAME_LOCATION_CITY);
+                    setTempAndHumidity();
+                }
+                //从 MainActivity 获取 Mqtt 订阅话题信息
+                if (intent.getStringExtra(KEY_SUBSCRIBE) != null) {
+                    Message message = new Message();
+                    message.what = 3;
+                    message.obj = intent.getStringExtra(KEY_SUBSCRIBE);
+                    handler.sendMessage(message);
+                }
             }
         }
     };
-
-    @SuppressLint("SetTextI18n")
-    private void initView(@NonNull View view) {
-        txvTemperature = view.findViewById(R.id.data_temperature);
-        txvHumidity = view.findViewById(R.id.data_humidity);
-        txvIllumination = view.findViewById(R.id.data_illumination);
-        txvWeatherTemperature = view.findViewById(R.id.weather_temperature);
-        txvWeatherStatus = view.findViewById(R.id.weather_status);
-        swLed = view.findViewById(R.id.sw_led);
-
-
-        swLed.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                Intent intent = new Intent();
-                intent.setAction(ACTION_HOMEFRAGMENT_TO_MAINACTIVITY);
-                intent.putExtra(KEY_PUBLISH, isChecked);
-                getActivity().sendBroadcast(intent);
-            }
-        });
-
-        refreshUi();
-    }
 
     @Override
     public void onDestroyView() {
@@ -235,13 +226,6 @@ public class HomeFragment extends Fragment implements AMapLocationListener {
         super.onDestroy();
         Toast.makeText(getContext(), "onDestroy", Toast.LENGTH_SHORT).show();
         getContext().unregisterReceiver(broadcastReceiver);
-    }
-
-    private void refreshUi() {
-        txvTemperature.setText(temper + "°");
-        txvHumidity.setText(humi + "%");
-        txvIllumination.setText((illum) + "lx");
-        swLed.setChecked(ledR == 1);
     }
 
     private void mRegisterBroadCast() {
@@ -275,89 +259,117 @@ public class HomeFragment extends Fragment implements AMapLocationListener {
     }
 
     /**
-     * <p/> 从API获取天气数据
+     * 初始化UI
+     * <p/>
      *
      * @param view view
      * @return void
      * @author jojo
+     * @date 2023/3/14
+     */
+    @SuppressLint("SetTextI18n")
+    private void initView(@NonNull View view) {
+        txvTemperature = view.findViewById(R.id.data_temperature);
+        txvHumidity = view.findViewById(R.id.data_humidity);
+        txvIllumination = view.findViewById(R.id.data_illumination);
+        txvWeatherTemperature = view.findViewById(R.id.weather_temperature);
+        txvWeatherStatus = view.findViewById(R.id.weather_status);
+        txvLocationCity = view.findViewById(R.id.location_city);
+        txvWindSpeed = view.findViewById(R.id.wind_speed);
+        txvObsTime = view.findViewById(R.id.obs_time);
+        swLed = view.findViewById(R.id.sw_led);
+
+        swLed.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                Intent intent = new Intent();
+                intent.setAction(ACTION_HOMEFRAGMENT_TO_MAINACTIVITY);
+                intent.putExtra(KEY_PUBLISH, isChecked);
+                getActivity().sendBroadcast(intent);
+            }
+        });
+
+        Message message = new Message();
+        message.what = 1;
+        handler.sendMessage(message);
+    }
+
+    /**
+     * 刷新ui
+     * <p/>
+     *
+     * @param
+     * @return void
+     * @author
+     * @date 2023/3/14
+     */
+    private void refreshUi() {
+        txvTemperature.setText(temper + "°");
+        txvHumidity.setText(humi + "%");
+        txvIllumination.setText((illum) + "lx");
+        txvLocationCity.setText(nameLocationCity);
+        swLed.setChecked(ledR == 1);
+    }
+
+    /**
+     * <p/> 从API获取天气数据
+     *
+     * @param
+     * @return void
+     * @author jojo
      * @date 2023-3-13
      */
-    public void setTempAndHumidity(View view) {
+    public void setTempAndHumidity() {
         //location:查询的地区，可通过该地区ID、经纬度进行查询经纬度格式，这里以郑州为例，郑州的城市编号为"CN101180101"
         //location可以填城市编号，也可以填经纬度
-        QWeather.getWeatherNow(getActivity(), "CN101020100", Lang.ZH_HANS, Unit.METRIC, new QWeather.OnResultWeatherNowListener() {
-            public static final String TAG = "he_feng_now";
+        QWeather.getWeatherNow(getActivity(), dataLatitudeLongitude, Lang.ZH_HANS, Unit.METRIC,
+                new QWeather.OnResultWeatherNowListener() {
+                    public static final String TAG = "he_feng_now";
 
-            @Override
-            public void onError(Throwable e) {
-                Log.i(TAG, "onError: ", e);
-                System.out.println("获取天气失败");
-                System.out.println("Weather Now Error:" + new Gson());
-            }
+                    @Override
+                    public void onError(Throwable e) {
+                        Log.i(TAG, "onError: ", e);
+                        System.out.println("获取天气失败");
+                        System.out.println("Weather Now Error:" + new Gson());
+                    }
 
-            @Override
-            public void onSuccess(WeatherNowBean weatherBean) {
-                //Log.i(TAG, "getWeather onSuccess: " + new Gson().toJson(weatherBean));
-                System.out.println("获取天气成功： " + new Gson().toJson(weatherBean));
-                //先判断返回的status是否正确，当status正确时获取数据，若status不正确，可查看status对应的Code值找到原因
+                    @Override
+                    public void onSuccess(WeatherNowBean weatherBean) {
+                        //Log.i(TAG, "getWeather onSuccess: " + new Gson().toJson(weatherBean));
+                        System.out.println("获取天气成功： " + new Gson().toJson(weatherBean));
+                        //先判断返回的status是否正确，当status正确时获取数据，若status不正确，可查看status对应的Code值找到原因
 
-                if (Code.OK == weatherBean.getCode()) {
-                    WeatherNowBean.NowBaseBean now = weatherBean.getNow();
-                    System.out.println(now);
-                    String tianqi = now.getText();//天气
-                    String wendu = now.getTemp() + "℃";//温度
-                    String fengli = now.getWindScale();//风力
-                    String fengxiang = now.getWindDir();//风向
-                    String shidu = now.getHumidity() + "%";//湿度
+                        if (Code.OK == weatherBean.getCode()) {
+                            WeatherNowBean.NowBaseBean now = weatherBean.getNow();
+                            System.out.println(now);
+                            String tianqi = now.getText();//天气
+                            String wendu = now.getTemp() + "℃";//温度
+                            String fengli = now.getWindScale();//风力
+                            String obsTime = now.getObsTime();//观测时间
+                            String fengxiang = now.getWindDir();//风向
+                            String shidu = now.getHumidity() + "%";//湿度
 
 
-                    getActivity().runOnUiThread(new Runnable() {
-                        public void run() {
-                            txvWeatherStatus.setText(tianqi);//显示当前天气
-                            txvWeatherTemperature.setText(wendu);//显示当前温度
-                        }
-                    });
+                            getActivity().runOnUiThread(new Runnable() {
+                                public void run() {
+                                    txvWeatherStatus.setText(tianqi);//显示当前天气
+                                    txvWeatherTemperature.setText(wendu);//显示当前温度
+                                    txvWindSpeed.setText("风向：" + fengli + "公里/小时");//显示当前风速
+                                    txvObsTime.setText("实况观测时间：" + obsTime);
+                                }
+                            });
                     /*注意这里对控件显示的操作被放在getActivity()...void run(){}里了
                     这是因为我是在Fragment里操作的，如果把这些放在外边会抛出错误
                     在Activity中时可以把这些放在外边，不用带什么runOnUi...
                     参考了https://blog.csdn.net/i_nclude/article/details/105563688*/
 
-                } else {
-                    //在此查看返回数据失败的原因
-                    Code code = weatherBean.getCode();
-                    System.out.println("失败代码: " + code);
-                    //Log.i(TAG, "failed code: " + code);
-                }
-            }
-        });
-    }
-
-    /**
-     * 初始化高德定位
-     */
-    private void initAMapLocation() {
-
-        AMapLocationClient.updatePrivacyAgree(getContext(), true);
-        AMapLocationClient.updatePrivacyShow(getContext(), true, true);
-        try {
-            locationClientContinue = new AMapLocationClient(getActivity());
-
-            locationClientContinue.setLocationListener(this);
-            //设置定位间隔,单位毫秒,默认为2000ms，最低1000ms。
-            locationClientContinueOption.setInterval(1000);
-            //给定位客户端对象设置定位参数
-            locationClientContinue.setLocationOption(locationClientContinueOption);
-            //启动定位
-            locationClientContinue.startLocation();
-
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    @Override
-    public void onLocationChanged(AMapLocation aMapLocation) {
-        Log.d(TAG, "onLocationChanged: latitude" + String.valueOf(aMapLocation.getLatitude()));
-        Log.d(TAG, "onLocationChanged: Longitude" + String.valueOf(aMapLocation.getLongitude()));
+                        } else {
+                            //在此查看返回数据失败的原因
+                            Code code = weatherBean.getCode();
+                            System.out.println("失败代码: " + code);
+                            //Log.i(TAG, "failed code: " + code);
+                        }
+                    }
+                });
     }
 }
