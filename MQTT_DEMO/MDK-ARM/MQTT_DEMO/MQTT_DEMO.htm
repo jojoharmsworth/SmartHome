@@ -3,9 +3,9 @@
 <title>Static Call Graph - [MQTT_DEMO\MQTT_DEMO.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image MQTT_DEMO\MQTT_DEMO.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5050106: Last Updated: Mon Mar 13 17:25:47 2023
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5050106: Last Updated: Wed Mar 15 09:13:44 2023
 <BR><P>
-<H3>Maximum Stack Usage =        656 bytes + Unknown(Cycles, Untraceable Function Pointers)</H3><H3>
+<H3>Maximum Stack Usage =        664 bytes + Unknown(Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
 main &rArr; OneNet_RevPro &rArr; cJSON_Parse &rArr; cJSON_ParseWithOpts &rArr; cJSON_ParseWithLengthOpts &rArr; parse_value &rArr; parse_number &rArr; strtod &rArr; __strtod_int &rArr; _local_sscanf &rArr; _scanf_real
 <P>
@@ -836,6 +836,7 @@ Global Symbols
 
 <P><STRONG><a name="[85]"></a>HAL_GPIO_ReadPin</STRONG> (Thumb, 10 bytes, Stack size 0 bytes, stm32f1xx_hal_gpio.o(i.HAL_GPIO_ReadPin))
 <BR><BR>[Called By]<UL><LI><a href="#[87]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;DHT11_Read_TempAndHumidity
+<LI><a href="#[46]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 <LI><a href="#[84]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;DHT11_ReadByte
 </UL>
 
@@ -1735,8 +1736,8 @@ Global Symbols
 </UL>
 <BR>[Address Reference Count : 1]<UL><LI> printfa.o(i.__0printf)
 </UL>
-<P><STRONG><a name="[46]"></a>main</STRONG> (Thumb, 336 bytes, Stack size 160 bytes, main.o(i.main))
-<BR><BR>[Stack]<UL><LI>Max Depth = 656<LI>Call Chain = main &rArr; OneNet_RevPro &rArr; cJSON_Parse &rArr; cJSON_ParseWithOpts &rArr; cJSON_ParseWithLengthOpts &rArr; parse_value &rArr; parse_number &rArr; strtod &rArr; __strtod_int &rArr; _local_sscanf &rArr; _scanf_real
+<P><STRONG><a name="[46]"></a>main</STRONG> (Thumb, 364 bytes, Stack size 168 bytes, main.o(i.main))
+<BR><BR>[Stack]<UL><LI>Max Depth = 664<LI>Call Chain = main &rArr; OneNet_RevPro &rArr; cJSON_Parse &rArr; cJSON_ParseWithOpts &rArr; cJSON_ParseWithLengthOpts &rArr; parse_value &rArr; parse_number &rArr; strtod &rArr; __strtod_int &rArr; _local_sscanf &rArr; _scanf_real
 </UL>
 <BR>[Calls]<UL><LI><a href="#[114]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;u8x8_SetPowerSave
 <LI><a href="#[113]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;u8x8_InitDisplay
@@ -1762,6 +1763,7 @@ Global Symbols
 <LI><a href="#[da]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;MQTT_Ping
 <LI><a href="#[117]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_TIM_Base_Start_IT
 <LI><a href="#[a4]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_Init
+<LI><a href="#[85]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_GPIO_ReadPin
 <LI><a href="#[8e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_Delay
 <LI><a href="#[97]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Get_BH1750_Value
 <LI><a href="#[8f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ESP8266_Init

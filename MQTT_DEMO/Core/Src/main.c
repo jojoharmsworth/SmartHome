@@ -60,6 +60,7 @@
 char buffPublish[256];
 DHT11_Data_TypeDef DHT11_Data;
 uint16 Light;
+uint8 led_status=0;
 static uint16_t cnt = 0;
 UI_FLAG_TypeDef ui = {0, 0};
 int heart_Pack = 0; // 心跳时间
@@ -242,6 +243,7 @@ int main(void)
       printf("DHT11读取失败!");
 
     Light = Get_BH1750_Value();
+    led_status = !HAL_GPIO_ReadPin(LEDR_GPIO_PORT, LEDR_GPIO_PIN);
 
     /*-------------- Publish Topic --------------*/
     if (++cnt >= 4000)
@@ -250,8 +252,8 @@ int main(void)
       printf("||\t\t\t\t\t\t\t||\r\n");
       printf("||\t\t\t\t\t\t\t||\r\n");
       // OneNet_Publish("pcTopic", "MQTT Publish Test");
-      sprintf(buffPublish, "{\"temp\":%d.%d, \"humi\":%d.%d, \"illumination\":%d}",
-              DHT11_Data.temp_int, DHT11_Data.temp_deci, DHT11_Data.humi_int, DHT11_Data.humi_deci, Light);
+      sprintf(buffPublish, "{\"temp\":%d.%d, \"humi\":%d.%d, \"illumination\":%d, \"led_status\":%d}",
+              DHT11_Data.temp_int, DHT11_Data.temp_deci, DHT11_Data.humi_int, DHT11_Data.humi_deci, Light, led_status);
       OneNet_Publish(devPubTopic, buffPublish);
 
       ESP8266_Clear();
